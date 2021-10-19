@@ -7,4 +7,4 @@ database: json
 any advice?
 
 
-## starting: npm i && npm start
+## starting: npm i && npm start or use .bat files
