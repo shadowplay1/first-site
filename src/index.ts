@@ -76,11 +76,11 @@ class Server extends Methods {
             if (!url) {
                 this.logger.sendLog('link', {
                     ip: req.ip,
-                    url: '/quadratic-equations',
+                    url: '/',
                     statusCode: 200
                 })
 
-                return this.sendPage('./assets/services/quadratic-equations.html', req, res)
+                return this.sendPage('./assets/main.html', req, res)
             }
 
             if (pages.removed[url]) return this.sendError(null, req, res, 410)
