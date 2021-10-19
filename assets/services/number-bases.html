@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <p class="menu"></p>
+    <meta name="description" content="Калькулятор систем счисления.">
+
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+    <link rel="stylesheet" href="/css/style.css">
+
+    <script src="/js/loadPage.js"></script>
+
+    <script src="/js/createSharingLink.js"></script>
+    <script src="/js/copyText.js"></script>
+
+    <title>Системы счисления</title>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Системы счисления</h1>
+        <h3>Данный сервис переведёт указанное число из одной системы счисления в другую.</h3>
+        <br>
+        Число:
+        <br>
+        <input id="number" type="text" placeholder="110110">
+        <b>
+            <p class="errorMessage" id="badNumber"></p>
+        </b>
+        Перевести из:
+        <br>
+        <input id="base1" placeholder="2">
+        <br>
+        <b>
+            <p class="errorMessage" id="badBase1"></p>
+        </b>
+        В:
+        <br>
+        <input id="base2" placeholder="10">
+        <br>
+        <b>
+            <p class="errorMessage" id="badBase2"></p>
+        </b>
+        <br>
+        <a href="#" id="calculate" class="bigButton" onclick="checkParameters()">Перевести</a>
+        <br>
+        <br>
+        <p class="successMessage" id="result"></p>
+
+        <a href="#" class="link" id="shareSolutions"></a>
+        <p class="successMessage" id="copied"></p>
+
+        <script id="main">
+            document.onkeydown = function (x) {
+                if (x.key == 'Enter') return checkParameters()
+            }
+
+            function checkParameters() {
+                NProgress.start()
+
+                const shareSolutions = document.getElementById('shareSolutions')
+
+                const number = document.getElementById('number').value
+                const base1 = document.getElementById('base1').value
+                const base2 = document.getElementById('base2').value
+
+                const errorMessageNumber = document.getElementById('badNumber')
+                const errorMessageBase1 = document.getElementById('badBase1')
+                const errorMessageBase2 = document.getElementById('badBase2')
+
+                if (!number) {
+                    errorMessageNumber.innerHTML = 'Укажите число.'
+                    NProgress.done()
+                    return
+                }
+
+                if (isNaN(number)) {
+                    errorMessageNumber.innerHTML = 'Указанное значение не является числом.'
+                    NProgress.done()
+                    return
+                }
+
+                if (!base1) {
+                    errorMessageBase1.innerHTML = 'Укажите систему счисления, из которой нужно перевести число.'
+                    NProgress.done()
+                    return
+                }
+
+                if (isNaN(base1)) {
+                    errorMessageBase1.innerHTML = 'Указанная система счисления не является числом.'
+                    NProgress.done()
+                    return
+                }
+                else errorMessageBase1.innerHTML = ''
+
+                if (Number(base1) < 2 || Number(base1) > 36) {
+                    errorMessageBase1.innerHTML = 'Переводить числа можно из систем счисления от 2-ной до 36-ричной.'
+                    NProgress.done()
+                    return
+                }
+                else errorMessageBase1.innerHTML = ''
+
+
+                if (!base2) {
+                    errorMessageBase2.innerHTML = 'Укажите систему счисления, в которую нужно перевести число.'
+                    NProgress.done()
+                    return
+                }
+                if (isNaN(base2)) {
+                    errorMessageBase2.innerHTML = 'Указанная система счисления не является числом.'
+                    NProgress.done()
+                    return
+                }
+
+                if (Number(base2) < 2 || Number(base2) > 36) {
+                    errorMessageBase2.innerHTML = 'Переводить числа можно в системы счисления от 2-ной до 36-ричной.'
+                    NProgress.done()
+                    return
+                }
+
+                else {
+                    errorMessageBase2.innerHTML = ''
+                    let cond = ''
+
+                    const resultField = document.getElementById('result')
+                    const result = parseInt(number, base1).toString(base2)
+
+                    const splittedNumbers = String(number).split('').map((_, i) => i).reverse()
+            
+                    let resultContent =
+                        `<br><b>Результат:</b><br>
+                        <b>1.</b> Дано число: <b>${number}<sub>${base1}</sub></b><br><br>
+
+                        <b>2.</b> Расставляем разряды числа:<br><br>
+                        ${splittedNumbers.join('')}<br>
+                        <b>${number}</b><br><br>
+                        
+                        <b>3.</b> Находим значение выражения:<br>
+                        ${String(number).split('').map((x, i) => `${String(number[i])} * ${base1}<sup>${Object.keys(splittedNumbers).reverse()[i]}</sup>`).join(' + ')} = ${result}<sub>${base2}</sub></b><br><br>
+
+                        <b>4.</b> Ответ:<br>
+                        ${result}<sub>${base2}</sub></b>`
+
+                    resultField.innerHTML = resultContent
+                    
+                    shareSolutions.innerHTML = '<br>Поделиться решением'
+
+                    shareSolutions.onclick = async function() {
+                        const copied = document.getElementById('copied')
+                        const link = await createSharingLink('number-bases', number, base1, base2)
+
+                        copyText(link).then(() => {
+                            copied.innerHTML = 'Ссылка скопиована!<br>'
+                            
+                            setTimeout(() => {
+                                copied.innerText = ''
+                            }, 5000)
+                        }).catch(err => {
+                            copied.classList.add('errorMessage')
+                            copied.innerHTML = 'Не удалось скопировать ссылку.'
+                            
+                            console.warn(`Failed to copy the sharing link: ${err}`)
+
+                            setTimeout(() => {
+                                copied.classList.remove('errorMessage')
+                                copied.innerText = ''
+                            }, 5000)
+                        })
+                    }
+
+                    NProgress.done()
+                }
+            }
+       </script> <!-- end -->
+
+    </div>
+</body>
+
+</html>

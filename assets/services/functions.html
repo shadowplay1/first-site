@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    
+    <p class="menu"></p>
+    <meta name="description" content="Калькулятор квадратных уравнений.">
+
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+    <link rel="stylesheet" href="/css/style.css">
+
+    <script src="/js/loadPage.js"></script>
+    <script src="/js/calculateQuadraticEquation.js"></script>
+
+    <title>Расчёт функций</title>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Расчёт функций</h1>
+        <h3>Данный сервис вычислит функцию по указанному значению.</h3>
+        <br>
+        
+        <a href="#" class="bigButton" onclick="checkParameters()">Вычислить</a>
+        <br>
+        <br>
+        <p class="successMessage" id="result"></p>
+    </div>
+</body>
+
+</html>

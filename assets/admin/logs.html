@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <p class="menu"></p>
+    <meta name="description" content="Позволяет просмотреть весь журнал действий на сайте.">
+
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+    <link rel="stylesheet" href="/css/style.css">
+
+    <script src="/js/loadPage.js"></script>
+
+    <title>Журнал действий</title>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Журнал действий</h1>
+
+        <b>Здесь вы можете просмотреть весь журнал действий этого сайта.</b><br><br>
+
+        <b id="logsAmount">Количество логов: 0</b><br><br>
+
+        <textarea id="logs" class="bigField" rows="40" cols="180" readonly>Загрузка...</textarea>
+
+        <b id="failedToUpdate" class="warningMessage"><br><br><br></b>
+
+        <a href="/" class="bigButton">На главную</a><br><br><br>
+    </div>
+</body>
+
+<script>
+    const logsField = document.getElementById('logs')
+    const logsAmount = document.getElementById('logsAmount')
+
+    const warningMessage = document.getElementById('failedToUpdate')
+
+    function fetchLogs(scrollDown = false) {
+        fetch('/api/logs/get').then(x => x.json()).then(x => {
+
+            /**
+            * @type {Array<{type: String, username: String, ip: String, date: String, data: Object, pretty: String}>}
+            */
+            let logs = x.logs || []
+            let siteLogs = logs.map(x => `[${x.date}] ${x.pretty.replace('::ffff:', '').replace('::1', '127.0.0.1')}`).join('\n') || 'Ничего нет.'
+
+            logsField.value = siteLogs
+            warningMessage.innerHTML = '<br><br><br>'
+            logsAmount.innerText = `Количество логов: ${logs.length.toLocaleString()}`
+
+            if (scrollDown) logsField.scrollTop = logsField.scrollHeight
+            if ((logsField.scrollTop + 500) >= logsField.scrollHeight) logsField.scrollTop = logsField.scrollHeight
+
+            NProgress.done()
+        }).catch(err => {
+            NProgress.start()
+
+            warningMessage.innerHTML = '<br><br>Не удалось обновить журнал сайта.<br><br><br>'
+            if (logsField.value == 'Загрузка...') logsField.innerText = `Не удалось загрузить журнал сайта.`
+
+            console.warn(`Failed to fetch data from API: ${err}`)
+        })
+    }
+
+    fetchLogs(true)
+
+    setInterval(() => {
+        fetchLogs()
+    }, 300)
+</script>
+
+</html>

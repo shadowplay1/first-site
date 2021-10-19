@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <p class="menu"></p>
+    <meta name="description" content="Отправляет указанный код на сервер для его выполнения.">
+
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+    <link rel="stylesheet" href="/css/style.css">
+
+    <script src="/js/loadPage.js"></script>
+
+    <title>Выполнение кода</title>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Выполнение кода</h1>
+
+        <b id="enterCode">Введите код в поле ниже. Он будет выполнен в файле по пути "./src/index.ts".</b><br><br>
+        <textarea class="bigField" rows="40" cols="180" id="code"></textarea><br><br>
+        <input type="checkbox" id="evalInPage"> Выполнить на странице<br><br><br>
+
+        <a href="#" class="bigButton" onclick="send()">Выполнить</a><br><br><br>
+
+        <a href="/" class="bigButton">На главную</a><br><br><br>
+
+        <b>Результат:</b><br><br>
+        <textarea class="bigField" readonly="true" rows="40" cols="180" id="result"></textarea>
+    </div>
+</body>
+
+<script>
+    const evalInPage = document.getElementById('evalInPage')
+
+    evalInPage.onchange = function (x) {
+        const enterCode = document.getElementById('enterCode')
+
+        if (this.checked) enterCode.innerText = 'Введите код в поле ниже. Он будет выполнен на этой странице.'
+        else enterCode.innerText = 'Введите код в поле ниже. Он будет выполнен в файле по пути "./src/index.ts".'
+    }
+
+    function send() {
+        const startDate = Date.now()
+
+        const code = document.getElementById('code').value
+        const result = document.getElementById('result')
+
+        if (!evalInPage.checked) {
+            window.location = `/admin/eval?code=${encodeURIComponent(code)}`
+            return
+        }
+
+        try {
+            const evaled = eval(code)
+
+            result.value = `time: ${Date.now() - startDate}ms\ntypeof: ${typeof evaled}\n\noutput:\n${evaled}`
+        } catch (err) {
+            result.value = `time: ${Date.now() - startDate}ms\n\nerror:\n${err.stack}`
+        }
+    }
+</script>
+
+</html>

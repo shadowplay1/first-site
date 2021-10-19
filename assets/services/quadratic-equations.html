@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <p class="menu"></p>
+    <meta name="description" content="Калькулятор квадратных уравнений.">
+
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+    <link rel="stylesheet" href="/css/style.css">
+
+    <script src="/js/loadPage.js"></script>
+
+    <script src="/js/calculateQuadraticEquation.js"></script>
+    <script src="/js/createSharingLink.js"></script>
+
+    <script src="/js/copyText.js"></script>
+
+    <title>Квадратные уравнения</title>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Квадратные уравнения</h1>
+        <h3>Данный сервис вычислит корни квадратного уравнения по указанным коэффициентам и при наличии корней покажет,
+            как разложить его на множители.</h3>
+        <br>
+
+        Коэффициент <b>a</b>:
+        <br>
+        <input id="ratio_a" type="text" placeholder="a =">
+        <b>
+            <p class="errorMessage" id="badRatioA"></p>
+        </b>
+        Коэффициент <b>b</b>:
+        <br>
+        <input id="ratio_b" placeholder="b = ">
+        <br>
+        <b>
+            <p class="errorMessage" id="badRatioB"></p>
+        </b>
+        Коэффициент <b>c</b>:
+        <br>
+        <input id="ratio_c" placeholder="c = ">
+        <br>
+        <b>
+            <p class="errorMessage" id="badRatioC"></p>
+        </b>
+        <br>
+        <a href="#" id="calculate" class="bigButton" onclick="checkParameters()">Вычислить</a>
+        <br>
+        <br>
+
+        <p class="successMessage" id="result"></p>
+
+        <a class="link" id="shareSolutions"></a>
+        <p class="successMessage" id="copied"></p>
+
+        <a class="link" id="showMultipliersLink"></a>
+        <p class="successMessage" id="showMultipliers"></p>
+
+        <!-- <progress value="50" max="100" class="progressbar"></progress> -->
+        <script id="main">
+            document.onkeydown = function (x) {
+                if (x.key == 'Enter') return checkParameters()
+            }
+
+            function checkParameters() {
+                NProgress.start()
+
+                const showMultipliers = document.getElementById('showMultipliers')
+                const showMultipliersLink = document.getElementById('showMultipliersLink')
+                const shareSolutions = document.getElementById('shareSolutions')
+
+                const a = document.getElementById('ratio_a').value
+                const b = document.getElementById('ratio_b').value
+                const c = document.getElementById('ratio_c').value
+
+                const errorMessageRatioA = document.getElementById('badRatioA')
+                const errorMessageRatioB = document.getElementById('badRatioB')
+                const errorMessageRatioC = document.getElementById('badRatioC')
+
+                if (!a) {
+                    errorMessageRatioA.innerHTML = 'Укажите коэффициент <b>a</b>.'
+                    NProgress.done()
+                    return
+                }
+
+                if (isNaN(a)) {
+                    errorMessageRatioA.innerHTML = 'Коэффициент <b>a</b> должен быть числом.'
+                    NProgress.done()
+                    return
+                }
+
+                if (a == '0') {
+                    errorMessageRatioA.innerHTML = 'Коэффициент <b>a</b> не может быть равен нулю.'
+                    NProgress.done()
+                    return
+                }
+                else errorMessageRatioA.innerHTML = ''
+
+
+                if (!b) {
+                    errorMessageRatioB.innerHTML = 'Укажите коэффициент <b>b</b>.'
+                    NProgress.done()
+                    return
+                }
+
+                if (isNaN(b)) {
+                    errorMessageRatioB.innerHTML = 'Коэффициент <b>b</b> должен быть числом.'
+                    NProgress.done()
+                    return
+                }
+                else errorMessageRatioB.innerHTML = ''
+
+
+                if (!c) {
+                    errorMessageRatioC.innerHTML = 'Укажите коэффициент <b>c</b>.'
+                    NProgress.done()
+                    return
+                }
+                if (isNaN(c)) {
+                    errorMessageRatioC.innerHTML = 'Коэффициент <b>c</b> должен быть числом.'
+                    NProgress.done()
+                    return
+                }
+
+
+                else {
+                    errorMessageRatioC.innerHTML = ''
+                    let cond = ''
+
+                    const resultField = document.getElementById('result')
+
+                    const result = calculateQuadraticEquation(a, b, c)
+                    const isSqrtOkay = !String(result.sqrtD).includes('.')
+
+                    const ratioA = a == '1' ? '' : `* ${a}`
+
+                    let resultsArray = [result.x1, result.x2].sort((a, b) => a - b)
+
+                    if (!isSqrtOkay) {
+                        resultsArray[0] = `(${Number(b) > 0 ? `-${b}` : b.replace('-', '')} + √${result.d}) / 2 ${a == '1' ?
+                            Number(a) < 0
+                                ? `(${a})`
+                                : ''
+                            : `* ${Number(a) < 0
+                                ? `(${a})`
+                                : a}`}`
+                        resultsArray[1] = `(${Number(b) > 0 ? `-${b}` : b.replace('-', '')} - √${result.d}) / 2 ${a == '1' ?
+                            Number(a) < 0
+                                ? `(${a})`
+                                : ''
+                            : `* ${Number(a) < 0
+                                ? `(${a})`
+                                : a}`}`
+
+                        resultsArray = resultsArray.reverse()
+                    }
+
+                    if (result.d > 0) cond = '> 0, 2 корня'
+                    if (result.d < 0) cond = '< 0, нет корней'
+                    if (result.d == 0) cond = '= 0, 1 корень'
+
+                    let resultContent =
+                        `<br><b>Результат:</b><br>
+                        <b>1.</b> Дано уравнение:
+                        <b>${result.equation.replace('^2', '<sup>2</sup>')}</b><br><br>
+
+                        <b>2.</b> Коэффициенты уравнения:<br>
+                        a = ${a}, b = ${b}, c = ${c}.<br><br>
+
+                        <b>3.</b> Находим дискриминант по формуле:<br>
+                        D = b<sup>2</sup> - 4ac<br><br>
+
+                        <b>4.</b> D = ${result.d}<br><br>
+                        <b>5.</b> D ${cond}<br><br>`
+
+                    if (result.d > 0) resultContent += `
+                    <b>6.</b> Извлекаем корень из дискриминанта:<br>
+                    √D = ${result.sqrtD} (${isSqrtOkay ? '' : 'не '}извлекается нацело)<br><br>
+
+                    <b>7.</b> Находим корни уравнения по формуле:<br><br>
+
+                    <span class="fraction">-b &plusmn√D/2a</span><br><br>
+
+                    <b>8.</b> x<sub>1</sub> = (${Number(b) > 0 ? `-${b}` : b.replace('-', '')} + ${isSqrtOkay ? result.sqrtD : `√${result.d}`}) / 2 
+                    ${a == '1' ?
+                            Number(a) < 0
+                                ? `(${a})`
+                                : ''
+                            : `* ${Number(a) < 0
+                                ? `(${a})`
+                                : a}`} ${isSqrtOkay ? `= ${result.x1}` : ''}<br>
+                    <b>9.</b> x<sub>2</sub> = (${Number(b) > 0 ? `-${b}` : b.replace('-', '')} - ${isSqrtOkay ? result.sqrtD : `√${result.d}`}) / 2 ${a == '1' ?
+                            Number(a) < 0
+                                ? `(${a})`
+                                : ''
+                            : `* ${Number(a) < 0
+                                ? `(${a})`
+                                : a}`} ${isSqrtOkay ? `= ${result.x2}` : ''}<br><br>
+                    
+                    <b>10.</b> Ответ:<br>
+                    ${resultsArray.sort((a, b) => a - b).join(isSqrtOkay ? '; ' : ';<br>').replace(' ;', ';')}`
+
+                    if (result.d == 0) resultContent += `<b>6.</b> Ответ:<br>
+                    ${result.x1}`
+
+                    if (result.d < 0) resultContent += '<b>6.</b> Ответ: нет корней.'
+
+                    resultField.innerHTML = resultContent
+
+                    shareSolutions.innerHTML = '<br>Поделиться решением'
+                    showMultipliersLink.innerText = 'Показать разложение на множители'
+
+                    shareSolutions.onclick = async function () {
+                        const copied = document.getElementById('copied')
+                        const link = await createSharingLink('quadratic-equations', a, b, c)
+
+                        copyText(link).then(() => {
+                            copied.innerHTML = 'Ссылка скопиована!<br>'
+
+                            setTimeout(() => {
+                                copied.innerText = ''
+                            }, 5000)
+                        }).catch(err => {
+                            copied.classList.add('errorMessage')
+                            copied.innerHTML = 'Не удалось скопировать ссылку.'
+
+                            console.warn(`Failed to copy the sharing link: ${err}`)
+
+                            setTimeout(() => {
+                                copied.classList.remove('errorMessage')
+                                copied.innerText = ''
+                            }, 5000)
+                        })
+                    }
+
+                    $('.fraction').each(function () {
+                        $this = $(this)
+                        const split = $this.html().split("/")
+
+                        if (split.length == 2) {
+                            $this.html('<span class="top">' + split[0] + '</span><span class="bottom">' + split[1] + '</span>')
+                        }
+                    })
+                    NProgress.done()
+                }
+            }
+
+            showMultipliersLink.onclick = function () {
+                const a = document.getElementById('ratio_a').value
+                const b = document.getElementById('ratio_b').value
+                const c = document.getElementById('ratio_c').value
+
+                const result = calculateQuadraticEquation(a, b, c)
+
+                const shown = showMultipliersLink.innerText.startsWith('Показать')
+
+                showMultipliersLink.innerHTML =
+                    shown ?
+                        showMultipliersLink.innerText = 'Скрыть разложение на множители' :
+                        showMultipliersLink.innerText = 'Показать разложение на множители'
+
+                let multiplierContent = `<div id="multiplierContainer">
+                            <br>
+                            <b>Разложение квадратного трёхчлена уравнения:</b>
+                            <br>
+                            <b>1.</b> Дан квадратный трёхчлен:
+                            <b>${result.equation.replace('^2', '<sup>2</sup>').replace('= 0', '')}</b><br><br>
+
+                            <b>2.</b> Формула разложения квадратного трёхчлена:<br>
+                            <b>a * (x - x<sub>1</sub>) * (x - x<sub>2</sub>)</b>, где:<br>
+                            <b>a</b> - коэффициент А,<br>
+                            <b>x<sub>1</sub></b> и <b>x<sub>2</sub></b> - корни уравнения.<br><br>
+                        
+                            <b>3.</b> Раскладываем квадратный трёхчлен:<br>
+                            <b>${result.equation.replace('^2', '<sup>2</sup>').replace('= 0', '')} = ${a} * (x ${result.x1 < 0 ? `+ ${result.x1}`.replace('-', '') : `- ${result.x1}`}) * (x ${result.x2 < 0 ? `+ ${result.x2}`.replace('-', '') : `- ${result.x2}`})</b>.<br><br>
+                        </div>`
+
+                if (!result.x1 && !result.x2) multiplierContent =
+                    `<div id="multiplierContainer">
+                        <br>
+                        <b>Разложение квадратного трёхчлена уравнения:</b>
+                        <br>
+                        Для уравнений, не имеющих корней, разложение на множители недоступно.
+                </div>`
+
+                if (shown) showMultipliers.innerHTML += multiplierContent
+                else showMultipliers.innerHTML = ''
+            }
+        </script> <!-- end -->
+    </div>
+</body>
+
+</html>

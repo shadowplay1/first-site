@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <p class="menu"></p>
+    <meta name="description" content="Вход на сайт.">
+
+    <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/nprogress@0.2.0/nprogress.css">
+    <link rel="stylesheet" href="/css/style.css">
+
+    <script src="/js/loadPage.js"></script>
+
+    <script src="/js/checkLoginData.js"></script>
+    <script src="/js/isEmail.js"></script>
+    
+    <script src="/js/isCapsEnabled.js"></script>
+
+    <title>Вход</title>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Вход</h1>
+
+        Электронная почта<br>
+        <input id="login" type="text" placeholder="Почта">
+        <b>
+            <p class="errorMessage" id="incorrectEmail"></p>
+        </b>
+
+        Пароль<br>
+        <input id="password" type="password" placeholder="Пароль"><br><br>
+
+        <input type="checkbox" onclick="showPassword()">
+        Показать пароль
+        <br>
+        
+        <input type="checkbox" id="rememberMe"> Запомнить меня 
+
+        <b>
+            <p class="errorMessage" id="incorrectPassword"></p>
+        </b>
+
+        <b>
+            <p class="warningMessage" id="capsEnabled"></p>
+        </b><br>
+
+
+        <a href="#" class="bigButton" onclick="checkLoginData()">Войти</a><br><br><br>
+
+        <!-- <a href="/register" class="bigButton">Зарегестрироваться</a><br><br><br> -->
+        
+        <a href="/" class="bigButton">На главную</a><br><br><br>
+    </div>
+</body>
+
+<script>
+    function showPassword() {
+        const passwordField = document.getElementById('password')
+
+        passwordField.type == 'password' ?
+            passwordField.type = 'text' :
+            passwordField.type = 'password'
+    }
+
+    document.onkeypress = function (x) {
+        const warnMessage = document.getElementById('capsEnabled')
+
+        if (isCapsEnabled(x)) {
+            warnMessage.innerText = 'Caps Lock включён.'
+
+        } else {
+            warnMessage.innerText = ''
+        }
+    }
+</script>
+
+</html>
