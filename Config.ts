@@ -11,7 +11,6 @@ const Config = {
 
             'quadratic-equations': 'Квадратные уравнения',
             'number-bases': 'Системы счисления',
-            'slovo-o-polku-igoreve': 'Слово о полку Игореве',
 
             login: 'Вход',
             register: 'Регистрация',
@@ -26,7 +25,7 @@ const Config = {
         },
 
         removed: {
-            //'slovo-o-polku-igoreve': 'Слово о полку Игореве'
+
         }
     }
 }
