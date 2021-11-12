@@ -1,6 +1,7 @@
-import UserAccount from '../interfaces/UserAccount'
+import UserAccount from '../classes/UserAccount'
+import AccountMethods from '../interfaces/AccountMethods'
 
-const UserAccountSchema: UserAccount = {
+const UserAccountSchema: Omit<UserAccount, AccountMethods> = {
     id: 0,
     
     username: '',
@@ -8,14 +9,17 @@ const UserAccountSchema: UserAccount = {
     email: '',
     ip: '',
 
+    verified: false,
     blocked: false,
     admin: false,
 
     authorized: true,
-    remember: false,
 
     createdAt: null,
-    createdTimestamp: 0
+    createdTimestamp: 0,
+
+    verificationToken: null,
+    passwordResetToken: null
 }
 
 export = UserAccountSchema

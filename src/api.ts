@@ -12,6 +12,7 @@ import AvailableParamsObject from './interfaces/AvailableParamsObject'
 import QuadraticEquation from './interfaces/QuadraticEquation'
 
 import DatabaseManager from './managers/DatabaseManager'
+import { json } from 'stream/consumers'
 
 const pingsHistoryLength = 5
 const pings: number[] = []
@@ -106,28 +107,28 @@ class API extends Methods {
             try {
                 const date = new Date()
                 this.accounts.create({
-                    ip: null,
+                    ip: req.ip,
 
                     username: '123',
-                    password: '321',
+                    password: '123',
                     email: 'a@a.ru',
 
+                    verified: true,
                     admin: true,
-                    remember: true,
 
                     createdAt: date,
-                    createdTimestamp: this.generateTimestamp(date)
+                    createdTimestamp: this.generateTimestamp(date),
                 })
 
                 this.accounts.create({
-                    ip: null,
+                    ip: req.ip,
 
                     username: '321',
                     password: '321',
                     email: 'aaa@aaaa.com',
 
+                    verified: false,
                     admin: false,
-                    remember: false,
 
                     createdAt: date,
                     createdTimestamp: this.generateTimestamp(date)
@@ -150,9 +151,21 @@ class API extends Methods {
 
         this.app.get(API_ENDPOINT + 'logs/get', (req, res) => {
             try {
+                const cookies = this.parseCookies(req.headers.cookie)
+
+                const email = cookies.email as string
+                const account = this.accounts.find({ email })
+
+                if (!account || !account.admin) return res.status(403).json({
+                    code: 403,
+                    status: false,
+                    message: 'Access denied to fetch the website logs',
+                    logs: []
+                })
 
                 res.json({
                     code: 200,
+                    status: true,
                     message: 'Fetched the logs successfully!',
                     logs: this.logs.get()
                 })
@@ -160,6 +173,7 @@ class API extends Methods {
             } catch (err) {
                 res.status(500).send({
                     code: 500,
+                    status: false,
                     message: 'Failed to receive a responce from API.',
                     error: `${err.name}: ${err.message}`
                 })
@@ -173,10 +187,10 @@ class API extends Methods {
 
         this.app.post(API_ENDPOINT + 'login/:email/:password/:rememberMe', (req, res) => {
             try {
-                const { email, password, rememberMe }: AvailableParamsObject = req.params
+                const { email, password }: AvailableParamsObject = req.params
 
                 const account = this.accounts.find({ email, password })
-                const status = this.accounts.login({ email, password, ip: req.ip, remember: rememberMe })
+                const status = this.accounts.login({ email, password })
 
                 if (!status) {
                     this.logs.sendLog('loginFailed', {
@@ -201,6 +215,7 @@ class API extends Methods {
                     ip: req.ip,
 
                     login: {
+                        email: account.email,
                         username: account.username,
                         password
                     }
@@ -222,11 +237,60 @@ class API extends Methods {
             }
         })
 
+        this.app.post(API_ENDPOINT + 'register/:username/:email/:password', (req, res) => {
+            const { email, username, password }: AvailableParamsObject = req.params
+
+            const sameEmailAccount = this.accounts.find({ email })
+
+            if (sameEmailAccount) return res.status(403).json({
+                code: 403,
+                status: false,
+                message: `Email "${email}" is already in use.`,
+                account: null
+            })
+
+            const verificationToken = this.generator.generateKey(128, false)
+            const account = this.accounts.create({
+                ip: req.ip,
+
+                email,
+                username,
+                password,
+
+                verified: false,
+                admin: false,
+
+                verificationToken
+            })
+
+            this.mailer.send(email, {
+                subject: `Активация аккаунта ${username} [${email}]`,
+                text: 'Для подтверждения аккаунта следуйте инструкциям.',
+                html: `<h1>Активация аккаунта</h1><br>
+                <p>Вы указали данный адрес электронной почты при регистрации аккаунта <b>${username}</b> на сайте <a href="${this.appURL}">${this.appURL}</a>.</p><br><br>
+                
+                <p>Чтобы активировать ваш аккаунт, перейдите по ссылке ниже:</p><br>
+
+                <b><a href="${this.appURL}/emailVerification?token=${verificationToken}">
+                    ${this.appURL}/emailVerification?token=${verificationToken}
+                </a></b><br><br>
+                
+                <footer style="size: 2px">Если вы не регистрировали аккаунт на этом сайте, то просто проигнорируйте это письмо.</footer>`,
+            })
+
+            return res.json({
+                code: 200,
+                status: true,
+                message: 'Account was successfully created and sent the email! Account verification is required now.',
+                account
+            })
+        })
+
         this.app.post(API_ENDPOINT + 'logout/:email/:username/:password', (req, res) => {
             try {
                 const { email, username, password }: AvailableParamsObject = req.params
 
-                const account = this.accounts.find({ email, username, password, ip: req.ip })
+                const account = this.accounts.find({ email, username, password })
                 const status = this.accounts.logout(email, username, password, req.ip)
 
                 if (!status) {
@@ -275,110 +339,117 @@ class API extends Methods {
             }
         })
 
-        this.app.get(API_ENDPOINT + 'users/find/:username', (req, res) => {
-            try {
-                const { username }: AvailableParamsObject = req.params
-                const accounts = this.accounts.findAll({ username })
+        this.app.post(API_ENDPOINT + 'password-reset/:email', (req, res) => {
+            const { email }: AvailableParamsObject = req.params
 
-                if (!accounts.length) return res.status(404).json({
-                    code: 404,
-                    status: false,
-                    message: `No accounts found with username ${username}.`,
-                    results: []
-                })
+            const accounts = this.accounts.list()
 
-                return res.json({
-                    code: 200,
-                    status: true,
-                    message: `Found ${accounts.length} ${accounts.length == 1 ? 'account' : 'accounts'} with username ${username}.`,
-                    results: accounts.map(x => {
-                        x.ip = null
-                        x.password = null
-                    })
-                })
+            const account = this.accounts.find({ email })
 
-            } catch (err) {
-                res.status(500).send({
-                    code: 500,
-                    message: 'Failed to receive a responce from API.',
-                    error: `${err.name}: ${err.message}`
-                })
-            }
+            if (!account) return res.status(404).json({
+                code: 200,
+                status: false,
+                message: `Cannot find account with email ${email}.`
+            })
+
+            if (account.passwordResetToken) return res.status(400).json({
+                code: 400,
+                status: false,
+                message: 'The email was already sent.'
+            })
+
+            const passwordResetToken = this.generator.generateKey(128, false)
+            
+            account.edit({ passwordResetToken })
+
+            this.mailer.send(email, {
+                subject: `Сброс пароля аккаунта ${account.username} [${account.email}]`,
+                text: 'Сброс пароля',
+                html: `<h1>Сброс пароля</h1><br>
+                <p>Вы запросили сброс пароля для своего аккаунта <b>${account.username}</b> на сайте <a href="${this.appURL}">${this.appURL}</a>.</p><br><br>
+                
+                <p>Для сброса пароля вашего аккаунта, перейдите по ссылке ниже:</p><br>
+
+                <b><a href="${this.appURL}/passwordReset?token=${passwordResetToken}">
+                    ${this.appURL}/passwordReset?token=${passwordResetToken}
+                </a></b><br><br>
+                
+                <footer style="size: 2px">Если вы не запрашивали сброс пароля, то просто проигнорируйте это письмо.</footer>`
+            })
+
+            res.json({
+                code: 200,
+                status: true,
+                message: 'Successfully sent a password reset email!'
+            })
         })
 
-        this.app.get(API_ENDPOINT + 'users/get/:id', (req, res) => {
-            try {
-                const { id }: AvailableParamsObject = req.params
-                const account = this.accounts.get(id)
+        this.app.post(API_ENDPOINT + 'resetPassword/:token/:newPassword', (req, res) => {
+            const { token, newPassword }: AvailableParamsObject = req.params
+            const account = this.accounts.find({ passwordResetToken: token })
 
-                if (!account) return res.status(404).json({
-                    code: 404,
-                    status: false,
-                    message: `No accounts found with ID ${id}.`,
-                    result: null
-                })
+            if (!account) return res.status(404).json({
+                code: 404,
+                status: false,
+                message: 'Cannot find an account with the specified password reset token.',
+                account: null
+            })
 
-                account.ip = null
-                account.password = null
+            const newAccount = account.edit({ password: newPassword, passwordResetToken: null })
+            
+            this.mailer.send(account.email, {
+                subject: `Сброс пароля аккаунта ${account.username} [${account.email}]`,
+                text: 'Пароль был успешно сброшен!',
+                html: `<h1>Сброс пароля</h1><br>
+                <p>Вы успешно изменили пароль от своего аккаунта <b>${account.username}</b> на сайте ${this.appURL.startsWith('http') ? this.appURL : `http://${this.appURL}`}.</p><br>
+                <p>Теперь вход в ваш аккаунт будет проходить с помощью нового пароля, который вы указали во время процедуры сброса.</p><br>
 
-                return res.json({
-                    code: 200,
-                    status: true,
-                    message: `Found an account with ID ${id}.`,
-                    result: account
-                })
+                <footer style="size: 2px">Это письмо было отправлено автоматически в качестве уведомления. Отвечать на него не нужно.</footer>`
+            })
 
-            } catch (err) {
-                res.status(500).send({
-                    code: 500,
-                    message: 'Failed to receive a responce from API.',
-                    error: `${err.name}: ${err.message}`
-                })
-            }
-        })
-
-        ////////////////////////////////////////
-        /////////  API KEY REQUESTS  ///////////
-        ////////////////////////////////////////
-
-        this.app.get(API_ENDPOINT + 'generateKey/:email/:password', (req, res) => {
-            try {
-                const { email, password }: AvailableParamsObject = req.params
-
-                const generator = new Generator()
-                const key = generator.generateKey()
-
-                const accountIndex = this.accounts.findIndex({ email, password })
-                console.log(email, password, accountIndex);
-
-                if (accountIndex == -1) return res.status(400).json({
-                    code: 400,
-                    status: false,
-                    message: 'Incorrect login details were provided.'
-                })
-
-                this.accounts.database.set(`accounts.${accountIndex}.apiKey`, key)
-
-                return res.json({
-                    code: 200,
-                    status: true,
-                    message: 'API Key was generated successfully!',
-                    key
-                })
-
-            } catch (err) {
-                res.status(500).send({
-                    code: 500,
-                    message: 'Failed to receive a responce from API.',
-                    error: `${err.name}: ${err.message}`
-                })
-            }
+            res.json({
+                code: 200,
+                status: false,
+                message: 'Password has been successfully reset!',
+                account: newAccount
+            })
         })
 
 
         ////////////////////////////////////////
         //////////  OTHER REQUESTS  ////////////
         ////////////////////////////////////////
+
+        this.app.get(API_ENDPOINT + 'reportBadActivity/:email/:username/:password', (req, res) => {
+            const { email, username, password }: AvailableParamsObject = req.params
+
+            if (!req.ip.includes('62.109.19.9') && req.ip !== '::1') {
+                return res.status(403).json({
+                    code: 403,
+                    status: false,
+                    message: 'You cannot do that.',
+                    yourIP: req.ip
+                })
+            }
+
+            this.logs.sendLog('badActivity', {
+                ip: req.ip,
+                url: null,
+
+                login: {
+                    email,
+                    username,
+                    password
+                }
+            })
+
+            return res.json({
+                code: 200,
+                status: true,
+                message: 'Reported successfully.',
+                yourIP: req.ip
+            })
+        })
 
         this.app.get(API_ENDPOINT + 'solutions/quadratic-equations/create/:a/:b/:c', (req, res) => {
             const [a, b, c]: number[] = Object.values(req.params).map(x => Number(x))
@@ -606,21 +677,3 @@ class API extends Methods {
 }
 
 export = API
-
-/*
-
-request code template:
-
-this.app.get(API_ENDPOINT + 'request-url', (req, res) => {
-    try {
-        // code
-    } catch (err) {
-        res.status(500).send({
-            code: 500,
-            message: 'Failed to receive a responce from API.',
-            error: `${err.name}: ${err.message}`
-        })
-    }
-})
-
-*/

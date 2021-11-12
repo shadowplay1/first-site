@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
 
     <p class="menu"></p>
-    <meta name="description" content="Позволяет просмотреть весь журнал действий на сайте.">
+    <meta name="description" content="Журнал действий сайта.">
 
     <script src="https://unpkg.com/nprogress@0.2.0/nprogress.js"></script>
 
@@ -25,39 +25,55 @@
 
         <b>Здесь вы можете просмотреть весь журнал действий этого сайта.</b><br><br>
 
-        <b id="logsAmount">Количество логов: 0</b><br><br>
+        <b id="logsAmount">Количество логов: 0</b>
+
+        <b id="filteredLogsAmount"></b><br><br>
+
+        Фильтровать по типу:  <select id="logTypeSelection"></select><br><br>
 
         <textarea id="logs" class="bigField" rows="40" cols="180" readonly>Загрузка...</textarea>
 
         <b id="failedToUpdate" class="warningMessage"><br><br><br></b>
 
-        <a href="/" class="bigButton">На главную</a><br><br><br>
+        <a href="/" class="bigButton" active="false">На главную</a><br><br><br>
     </div>
 </body>
 
 <script>
     const logsField = document.getElementById('logs')
-    const logsAmount = document.getElementById('logsAmount')
+    const logTypeSelection = document.getElementById('logTypeSelection')
 
     const warningMessage = document.getElementById('failedToUpdate')
 
+    const logsAmount = document.getElementById('logsAmount')
+    const filteredLogsAmount = document.getElementById('filteredLogsAmount')
+
     function fetchLogs(scrollDown = false) {
-        fetch('/api/logs/get').then(x => x.json()).then(x => {
+        return fetch('/api/logs/get').then(x => x.json()).then(x => {
 
             /**
             * @type {Array<{type: String, username: String, ip: String, date: String, data: Object, pretty: String}>}
             */
             let logs = x.logs || []
-            let siteLogs = logs.map(x => `[${x.date}] ${x.pretty.replace('::ffff:', '').replace('::1', '127.0.0.1')}`).join('\n') || 'Ничего нет.'
+            let siteLogs = logs.map(x => `[${x.date}] (${x.type}) ${x.pretty.replace('::ffff:', '').replace('::1', '127.0.0.1')}`).join('\n') || 'Ничего нет.'
 
             logsField.value = siteLogs
             warningMessage.innerHTML = '<br><br><br>'
             logsAmount.innerText = `Количество логов: ${logs.length.toLocaleString()}`
 
             if (scrollDown) logsField.scrollTop = logsField.scrollHeight
-            if ((logsField.scrollTop + 500) >= logsField.scrollHeight) logsField.scrollTop = logsField.scrollHeight
 
+            if ((logsField.scrollTop + 280) >= logsField.scrollHeight)
+                logsField.scrollTop = logsField.scrollHeight
+
+            if (logTypeSelection.value !== 'Все') {
+                const filteredLogsString = logs.filter(x => x.type == logTypeSelection.value).map(x => `[${x.date}] (${x.type}) ${x.pretty.replace('::ffff:', '').replace('::1', '127.0.0.1')}`).join('\n') || 'Ничего нет.'
+
+                logsField.value = filteredLogsString
+                filteredLogsAmount.innerHTML = `<br>Количесвто отфильтрованных логов: <b>${logs.filter(x => x.type == logTypeSelection.value).length}</b>`
+            }
             NProgress.done()
+            return logs
         }).catch(err => {
             NProgress.start()
 
@@ -68,11 +84,50 @@
         })
     }
 
-    fetchLogs(true)
+    fetch('/api/logs/get').then(x => x.json()).then(x => {
+        /**
+        * @type {Array<{type: String, username: String, ip: String, date: String, data: Object, pretty: String}>}
+        */
+        let logs = x.logs || []
+        logTypeSelection.innerHTML = `<option>Все</option>\n${[...new Set(logs.map(x => x.type))].map(x => `<option>${x}</option>`)}`
+    })
 
-    setInterval(() => {
-        fetchLogs()
-    }, 300)
+    logTypeSelection.onchange = function (x) {
+        const value = this.options[this.selectedIndex].value
+
+        fetch('/api/logs/get').then(x => x.json()).then(x => {
+
+            /**
+            * @type {Array<{type: String, username: String, ip: String, date: String, data: Object, pretty: String}>}
+            */
+            let logs = x.logs || []
+            let siteLogs
+
+            if (value == 'Все') {
+                siteLogs = logs.map(x => `[${x.date}] (${x.type}) ${x.pretty.replace('::ffff:', '').replace('::1', '127.0.0.1')}`).join('\n') || 'Ничего нет.'
+
+                logsField.value = siteLogs
+                filteredLogsAmount.innerHTML = ''
+
+                return
+            }
+
+            else {
+                logsField.value = logs.filter(x => x.type == value).map(x => `[${x.date}] (${x.type}) ${x.pretty.replace('::ffff:', '').replace('::1', '127.0.0.1')}`).join('\n') || 'Ничего нет.'
+
+                filteredLogsAmount.innerHTML = `<br>Количество отфильтрованных логов: <b>${logs.filter(x => x.type == value).length}</b>`
+                return
+            }
+        })
+    }
+
+    setTimeout(() => {
+        fetchLogs(true)
+
+        setInterval(() => {
+            fetchLogs()
+        }, 300)
+    }, 50)
 </script>
 
 </html>

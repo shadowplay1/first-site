@@ -18,7 +18,6 @@ let i = 1
 let buttons = [
     {
         text: 'Светлая',
-        href: '#',
         icon: 'fas fa-sun',
         id: 'themeButtonPC',
         mobileID: 'themeButtonMobile',
@@ -65,26 +64,54 @@ window.addEventListener('load', () => {
              * code: number, 
              * status: boolean, 
              * message: string,
-             * results: {
-             *   id: number, 
-             *   username: string, 
-             *   email: string
-             * }[]
+             * results: AccountData[]
              * }}
              */
             const x = res
             const account = x.results[0]
 
-            if (!x.status) return console.warn('[Auth] The user is trying to login using incorrect login details.')
+            if (!accountData.remember) {
+                buttons.push({
+                    text: 'Вход',
+                    icon: 'fas fa-door-open',
+                    href: '/login'
+                },
+                    {
+                        text: 'Регистрация',
+                        icon: 'fas fa-sign-in-alt',
+                        href: '/register'
+                    })
+
+                logout()
+                
+                delete localStorage.accountData
+                return
+            }
+
+            if (!x.status) {
+                buttons.push({
+                    text: 'Вход',
+                    icon: 'fas fa-door-open',
+                    href: '/login'
+                },
+                    {
+                        text: 'Регистрация',
+                        icon: 'fas fa-sign-in-alt',
+                        href: '/register'
+                    })
+
+                delete localStorage.accountData
+                return
+            }
 
             buttons.unshift({
-                text: accountData.username,
+                text: account.verified ? accountData.username : accountData.username + ' | Не подтверждён',
                 icon: 'fas fa-user',
                 style: 'cursor: default'
             })
             for (let i of accountButtons) buttons.push(i)
 
-            console.log(`[Auth] Logged in as ${account.username} [${account.email}] (Account ID: ${account.id})`);
+            console.log(`[Auth] Logged in as ${account.username} [${account.email}] (${account.verified ? 'Verified' : 'Unverified'})`);
         }).catch(err => {
             console.warn(`[Auth] Failed to check the authorization status: ${err}`)
         })
@@ -92,42 +119,18 @@ window.addEventListener('load', () => {
         buttons.push({
             text: 'Вход',
             icon: 'fas fa-door-open',
-            href: '/admin/login'
+            href: '/login'
         },
             {
                 text: 'Регистрация',
                 icon: 'fas fa-sign-in-alt',
-                href: '/admin/register'
+                href: '/register'
             })
 
-        console.warn('[Auth] The user is not authorized on the website.')
+        console.log('[Auth] The user is not authorized on the website.')
     }
 
-    setTimeout(() => {
-        // setting buttons for mobile menu
-        document.getElementById('menuBox').innerHTML = `${buttons
-            .map(x => `<li><a class="menu__item" ${x.href ? `href="${x.href}"` : 'href="#"'} ${x.mobileID ? `name="${x.mobileID}"` : ''} ${x.onClick ? `onclick="${x.onClick}"` : 'onclick="() => {}"'} ${x.style ? `style="${x.style}"` : ''}"><i class="${x.icon}"> </i> ${x.text}</a></li>`)
-            .join('                                \n')}`
-
-        // setting buttons for PC menu
-        document.getElementById('hamburger-buttons').innerHTML = `${buttons
-            .map(x =>
-                `<li itemprop="name"><a itemprop="url" tabindex="0" class="hoverable" ${x.href ? `href="${x.href}"` : 'href="#"'} name=${x.id} ${x.onClick ? `onClick="${x.onClick}" id="hamburgerButton"` : 'onClick="() => {}" id="hamburgerButton"'} ${x.style ? `style="${x.style}"` : ''}">
-                                    <i class="${x.icon}"></i> ${x.text}
-                                </a>
-                            </li>`
-            )
-            .join('\n')}`
-
-        const themeButtons = [document.getElementByID('themeButtonPC'), document.getElementByID('themeButtonMobile')]
-
-        if (!theme) {
-            localStorage.theme = 'light'
-            themeButtons.map(x => x.innerHTML = '<i class="fas fa-sun"></i> Светлая')
-        } else {
-            themeButtons.map(x => x.innerHTML = theme == 'light' ? '<i class="fas fa-moon"></i> Тёмная' : '<i class="fas fa-sun"></i> Светлая')
-        }
-    }, 100)
+    loadButtons(buttons)
 })
 
 function changeTheme() {
@@ -166,4 +169,7 @@ NProgress.done()
  * @property {String} username
  * @property {String} email
  * @property {String} password
+ * @property {Boolean} remember
+ * @property {Boolean} authorized
+ * @property {Boolean} verified
  */

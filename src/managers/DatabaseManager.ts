@@ -24,11 +24,6 @@ class DatabaseManager {
     private storagePath: string
 
     /**
-    * A database checking interval.
-    */
-    public interval: NodeJS.Timer
-
-    /**
      * Database manager methods class.
      * @param options Leveling options object.
      */
@@ -38,11 +33,9 @@ class DatabaseManager {
         this.fetcher = new FetchManager(storagePath)
         this.parser = new DotParser(storagePath)
 
-        const interval = setInterval(() => {
+        setInterval(() => {
             if (!existsSync(this.storagePath)) writeFileSync(this.storagePath, '{}')
         }, 1000)
-
-        this.interval = interval
     }
 
     /**

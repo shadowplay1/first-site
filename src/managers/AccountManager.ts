@@ -1,6 +1,7 @@
 import DatabaseManager from './DatabaseManager'
 
-import UserAccount from '../interfaces/UserAccount'
+import UserAccount from '../classes/UserAccount'
+import AccountMethods from '../interfaces/AccountMethods'
 
 import UserAccountSchema, { ip } from '../structures/UserAccountSchema'
 
@@ -18,21 +19,19 @@ class AccountManager {
 
     private generateTimestamp = new Timestamp().generateTimestamp
 
+    /**
+    * Account Manager.
+    */
     constructor() {
         const accounts = this.list()
         if (!Array.isArray(accounts)) this.database.set('accounts', [])
     }
-
     /**
-     * Creates an account. This action is equivalent to an account registration.
-     * @param {String} username User's username.
-     * @param {String} password User's password.
-     * @param {String} ip User's IP.
-     * @param {Boolean} remember Should the website remember the user.
-     * @param {Boolean} admin Is the user admin.
+     * Creates an account. This action is equivalent to the account registration.
+     * @param {String} options Account creating options.
      * @returns {UserAccount} The user account object.
      */
-    create(options: Omit<UserAccount, 'id' | 'blocked' | 'authorized'>): UserAccount {
+    create(options: Omit<UserAccount, AccountMethods | 'id' | 'blocked' | 'authorized'>): UserAccount {
         const accounts: UserAccount[] = this.database.fetch('accounts')
         const accountObject = { ...UserAccountSchema, ...options }
 
@@ -43,17 +42,25 @@ class AccountManager {
         accountObject.createdAt = date
         accountObject.createdTimestamp = this.generateTimestamp(date)
 
+        accountObject.verified = options.verified || false
+
         this.database.push('accounts', accountObject)
-        return accountObject
+
+        const account = new UserAccount(accountObject)
+        return account
     }
 
     /**
-     * Logs into the account. If the login and password are correct, it sets the account's `authorized` property to true.
-     * @param {String} username User's username.
-     * @returns {Boolean} If logged in successfully, true will be returned. Otherwise - false.
+     * Logs into the account. 
+     * 
+     * If the login and password are correct, 
+     * it sets the account's `authorized` property to 'true'.
+     * 
+     * @param {String} loginOptions Login options object.
+     * @returns {Boolean} If logged in successfully, 'true' will be returned. Otherwise - 'false'.
      */
-    login(loginOptions: Pick<UserAccount, 'email' | 'password' | 'ip' | 'remember'>): boolean {
-        const { email, password, remember } = loginOptions
+    login(loginOptions: Pick<UserAccount, 'email' | 'password'>): boolean {
+        const { email, password } = loginOptions
         const accounts = this.list()
 
         const account = this.find({ email, password })
@@ -65,15 +72,17 @@ class AccountManager {
 
         account.authorized = true
         account.ip = ip
-        if (remember) account.remember = true
 
         accounts.splice(accountIndex, 1, account)
-
         return this.database.set('accounts', accounts)
     }
 
     /**
-     * Logs off the account. Sets the account's `authorized` property to false. It's the opposite to `login()` method.
+     * Logs off the account. 
+     * 
+     * Sets the account's `authorized` property to false. 
+     * It's the opposite to `login()` method.
+     * 
      * @param {String} email User's email.
      * @param {String} password User's password.
      * @param {String} ip User's IP.
@@ -82,10 +91,21 @@ class AccountManager {
     logout(email: string, username: string, password: string, ip: string): boolean {
         const accounts = this.list()
 
-        const account = this.find({ email, username, password, ip })
-        const accountIndex = this.findIndex({ email, username, password, ip })
+        const account = this.find({ email, username, password })
+        const accountIndex = this.findIndex({ email, username, password })
 
         if (!account) return false
+
+        this.logger.sendLog('logout', {
+            ip,
+            url: null,
+
+            login: {
+                email,
+                username,
+                password
+            }
+        })
 
         account.authorized = false
         accounts.splice(accountIndex, 1, account)
@@ -99,15 +119,17 @@ class AccountManager {
      */
     list(): UserAccount[] {
         const accounts: UserAccount[] = this.database.fetch('accounts')
-        return accounts
+        const accountList = accounts.map(x => new UserAccount(x))
+
+        return accountList
     }
 
     /**
-    * Finds the account by username, password and IP.
-    * @param searchBy The object to find the account.
+    * Finds the account by any specified account properties.
+    * @param {Partial<Omit<UserAccount, AccountMethods>>} searchBy The object to find the account.
     * @returns {UserAccount} The user account object.
     */
-    find(searchBy: Partial<Pick<UserAccount, 'username' | 'password' | 'email' | 'ip'>>): UserAccount {
+    find(searchBy: Partial<Omit<UserAccount, AccountMethods>>): UserAccount {
         const accounts = this.list()
         const keys = Object.entries(searchBy)
 
@@ -119,35 +141,18 @@ class AccountManager {
             return true
         })
 
-        return account || null
-    }
+        if (!account?.email) return null
 
-    /**
-    * Finds all the accounts by username, password and IP.
-    * @param searchBy The object to find the account.
-    * @returns {UserAccount[]} Array of user account objects.
-    */
-    findAll(searchBy: Partial<Pick<UserAccount, 'username' | 'password' | 'email' | 'ip'>>): UserAccount[] {
-        const accounts = this.list()
-        const keys = Object.entries(searchBy)
-
-        const account = accounts.filter(x => {
-            for (let [key, value] of keys) {
-                if (x[key] !== value) return false
-            }
-
-            return true
-        })
-
-        return account || null
+        const userAccount = new UserAccount(account)
+        return userAccount
     }
 
     /**
     * Finds the account's index by username, password and IP.
-    * @param {String} username User's username.
+    * @param {Partial<Omit<UserAccount, AccountMethods>>} searchBy Account options object.
     * @returns {Number} The user account index.
     */
-    findIndex(searchBy: Partial<Pick<UserAccount, 'username' | 'password' | 'email' | 'ip'>>): number {
+    findIndex(searchBy: Partial<Omit<UserAccount, AccountMethods>>): number {
         const accounts = this.list()
         const keys = Object.entries(searchBy)
 
@@ -164,14 +169,12 @@ class AccountManager {
 
     /**
     * Finds the accounts by any specified account properties.
-    * @param {Partial<UserAccount>} id Account ID.
+    * @param {Partial<UserAccount>} searchBy Account options object.
     * @returns {UserAccount[]} The user account object.
     */
-    fetch(searchBy: Partial<UserAccount>): UserAccount[] {
+    fetch(searchBy: Partial<Omit<UserAccount, AccountMethods>>): UserAccount[] {
         const accountList = this.list()
         const keys = Object.entries(searchBy)
-        //console.log('searching in:', accountList);
-
 
         const accounts = accountList.filter(x => {
             for (let [key, value] of keys) {
@@ -180,37 +183,9 @@ class AccountManager {
             }
 
             return true
-        })
+        }).map(x => new UserAccount(x))
 
         return accounts
-    }
-
-    /**
-     * Finds the account by it's ID.
-     * @param {String | Number} id Account ID.
-     * @returns {UserAccount} The user account object.
-     */
-    get(id: string | number): UserAccount {
-        const accounts = this.list()
-        const account = accounts.find(x => x.id == id)
-
-        if (!id) return null
-        if (!account) return null
-
-        return account
-    }
-
-    /**
-    * Finds the account's index by it's ID.
-    * @param {String | Number} id Account ID.
-    * @returns {Number} The user account index.
-    */
-    getIndex(id: string | number): number {
-        const accounts = this.list()
-        const accountIndex = accounts.findIndex(x => x.id == id)
-
-        if (!id) return null
-        return accountIndex
     }
 }
 

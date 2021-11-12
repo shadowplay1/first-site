@@ -8,6 +8,9 @@ import AccountManager from '../managers/AccountManager'
 import AvailableParamsObject from '../interfaces/AvailableParamsObject'
 import { DEFAULT_PORT } from '../structures/Constants'
 
+import Email from './Email'
+import Generator from './KeyGenerator'
+
 /**
  * Methods class.
  */
@@ -21,6 +24,16 @@ class Methods {
      * Account Manager.
      */
     public accounts = new AccountManager()
+
+    /**
+     * Email Sender.
+     */
+    public mailer = new Email()
+
+    /**
+     * Keys/Tokens Generator.
+     */
+    public generator = new Generator()
 
     /**
      * the Methods class.
@@ -38,7 +51,7 @@ class Methods {
 
     /**
     * Parses the parameters from a URL string.
-    * @param {String} url url string.
+    * @param {String} url URL string.
     * @returns {AvailableParamsObject} Params object.
     */
     parseParams(url: string): AvailableParamsObject {
@@ -86,6 +99,26 @@ class Methods {
     }
 
     /**
+    * Parses the request cookies and returns a parsed cookies object.
+    * @param {String} cookieString Cookies string.
+    * @returns {Object} Parsed cookies object.
+    */
+    parseCookies(cookieString: string): Cookie {
+        const parsedCookies: Cookie = {}
+        const cookiesArray = cookieString.split('; ').map(x => x.split('='))
+
+        if (!cookieString || typeof cookieString !== 'string') return {}
+
+        for (let [key, value] of cookiesArray) {
+            parsedCookies[key] =
+                !isNaN(value as any) ||
+                    typeof value == 'boolean' ? JSON.parse(value) : value
+        }
+
+        return parsedCookies
+    }
+
+    /**
      * Sends the specified page to a website.
      * @param {String} path The path to an HTML file.
      * @param {Request} req Express Request.
@@ -109,8 +142,9 @@ class Methods {
             this.appURL = req.headers.host
 
             var menuContent = `
-            <script src="/js/jquery.min.js"></script>
-            <link href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" rel="stylesheet">
+            <!-- <script src="/js/jquery.min.js"></script> -->
+            <script src="/js/logout.js"></script>
+            <link href="https://use.fontawesome.com/releases/v5.14.0/css/all.css" rel="stylesheet">
             
             <select id="menu1" class="list" placeholder="Сервисы"> 
             <option>Сервисы</option>
@@ -134,6 +168,7 @@ class Methods {
         </script>`
 
             var emptyHamburger = `<script src="/js/logout.js"></script>
+            <script src="/js/loadButtons.js"></script>
             <section class="top-line h" id="top-line">
         <div class="container-fluid">
             <div class="row">
@@ -220,5 +255,9 @@ class Methods {
  * @returns {String} Page HTML text.
  */
 type PageCallbackFunction = (text: string) => string
+
+interface Cookie {
+    [key: string]: string | number | boolean
+}
 
 export = Methods

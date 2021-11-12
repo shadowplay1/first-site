@@ -704,3 +704,37 @@ img {
         font-weight: 900;
     }
 }
+
+
+#dialogue {
+    width: 300px;
+    height: 300px;
+    text-align: center;
+    padding: 15px;
+    border: 3px solid #585858;
+    border-radius: 10px;
+    color: #000000;
+    position: absolute;
+    top: -40px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: auto;
+    background: #fff;
+}
+
+#window {
+    background: rgba(102, 102, 102, 0.5);
+    background-size: 100% 100%;
+    min-height: 100vh;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: none;
+}
+
+#window:target {
+    display: block;
+}

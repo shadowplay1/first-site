@@ -13,7 +13,7 @@ import {
 
 import API from './api'
 
-import UserAccount from './interfaces/UserAccount'
+import UserAccount from './classes/UserAccount'
 
 import DatabaseManager from './managers/DatabaseManager'
 
@@ -96,6 +96,21 @@ class Server extends Methods {
             }
 
             if (pages.admin[url.split('/')[1]] && !params) {
+                const cookies = this.parseCookies(req.headers.cookie)
+
+                const email = cookies.email as string
+                const account = this.accounts.find({ email })
+
+                if (!account || !account.admin) {
+                    this.logger.sendLog('error', {
+                        ip: req.ip,
+                        url: '/' + url,
+                        statusCode: 403
+                    })
+
+                    return this.sendError(null, req, res, 403)
+                }
+
                 this.logger.sendLog('link', {
                     ip: req.ip,
                     url: '/' + url,
@@ -205,6 +220,113 @@ class Server extends Methods {
                         }
                     }
 
+                    if (params.urlData.url == '/emailVerification') {
+                        const { token } = params
+                        let code = 200
+
+                        const accountList: UserAccount[] = this.accounts.database.fetch('accounts')
+                        const [account, accountIndex]: [UserAccount, number] = [
+                            accountList.find(x => x.verificationToken == token) || {} as any,
+                            accountList.findIndex(x => x.verificationToken == token)
+                        ]
+
+                        if (account.verified) code = 400
+                        else if (!account.verificationToken) code = 404
+                        else if (!account.authorized) code = 403
+
+                        this.sendPage('./assets/verification.html', req, res, code, text => {
+                            if (!account.verificationToken) return text
+                                .replace(
+                                    '<b id="message"></b>',
+                                    '<b id="message" class="errorMessage">Недействительная ссылка активации аккаунта.</b>'
+                                )
+
+                            if (account.verified) return text
+                                .replace(
+                                    '<b id="message"></b>',
+                                    '<b id="message" class="errorMessage">Данный аккаунт уже активирован.</b>'
+                                )
+
+                            if (!account.authorized) return text
+                                .replace(
+                                    '<b id="message"></b>',
+                                    '<b id="message" class="errorMessage">Войдите в свой аккаунт для его активации.</b>'
+                                )
+
+                            account.verificationToken = null
+                            account.verified = true
+
+                            accountList.splice(accountIndex, 1, account)
+                            this.accounts.database.set('accounts', accountList)
+
+                            this.mailer.send(account.email, {
+                                subject: `Активация аккаунта ${account.username} [${account.email}]`,
+                                text: 'Спасибо за прохождение активации аккаунта на сайте!',
+                                html: `<h1>Активация аккаунта</h1><br>
+                                <p>Вы успешно активировали аккаунт <b>${account.username}</b> на сайте ${this.appURL.startsWith('http') ? this.appURL : `http://${this.appURL}`}.</p><br>
+                                <p>Спасибо за то, что уделили время активации своего аккаунта!</p><br>
+
+                                <footer style="size: 2px">Это письмо было отправлено автоматически в качестве уведомления. Отвечать на него не нужно.</footer>`,
+                            })
+
+                            return text
+                                .replace(
+                                    '<b id="message"></b>',
+                                    '<b id="message" class="successMessage">Аккаунт успешно активирован!</b>'
+                                )
+                        })
+                    }
+
+                    if (params.urlData.url == '/passwordReset') {
+                        const { token } = params
+                        let code = 200
+
+                        const accountList: UserAccount[] = this.accounts.database.fetch('accounts')
+
+                        const account: UserAccount =
+                            accountList.find(x => x.passwordResetToken == token) || {} as any
+
+                        if (!account.passwordResetToken) code = 404
+
+                        this.sendPage('./assets/passwordReset.html', req, res, code, text => {
+
+                            if (!account.passwordResetToken) return text
+                                .replace(
+                                    '<b id="message"></b>',
+                                    '<b id="message" class="errorMessage">Недействительная ссылка сброса пароля аккаунта.</b>'
+                                )
+
+                            return text
+                                .replace(
+                                    '<b id="message"></b>',
+                                    `Новый пароль<br>
+                                    <input id="newPassword" type="password" placeholder="Новый пароль"><br>
+                                    
+                                    <b>
+                                        <p class="errorMessage" id="incorrectNewPassword"></p>
+                                    </b>
+
+                                    Повторите пароль<br>
+                                    <input id="repeatedPassword" type="password" placeholder="Пароль"><br><br>
+
+                                    <input type="checkbox" id="showPassword" onclick="showPassword()"> Показать пароль
+                                    
+                                    <b>
+                                        <p class="errorMessage" id="incorrectRepeatedPassword"></p>
+                                    </b>
+
+                                    <b>
+                                        <p class="successMessage" id="changedSuccessfully"></p>
+                                    </b>
+                        
+                                    <b>
+                                        <p class="warningMessage" id="capsEnabled"></p>
+                                    </b><br>
+                                    <a href="#" class="bigButton" onClick="checkNewPasswordData()">Сменить пароль</a>`
+                                )
+                        })
+                    }
+
                     if (params.urlData.url == '/api/users/fetch') {
                         const accountParams: Partial<UserAccount> = params
                         delete params.urlData
@@ -224,6 +346,9 @@ class Server extends Methods {
                         accounts.map(x => {
                             delete x.ip
                             delete x.password
+
+                            delete x.verificationToken
+                            delete x.passwordResetToken
                         })
 
                         return res.status(200).send({

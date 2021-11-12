@@ -11,6 +11,11 @@ interface AvailableParamsObject {
     id?: number
 
     /**
+    * User's IP.
+    */
+    ip?: string
+
+    /**
     * User's ID.
     */
     email?: string
@@ -47,6 +52,31 @@ interface AvailableParamsObject {
      * A TypeScript code to run through the server.
      */
     code?: string
+
+
+    ////////////////////////////////////////
+    /////////////  OTHER DATA  /////////////
+    ////////////////////////////////////////
+
+    /**
+     * An authorization or verification token for anything.
+     */
+    token?: string
+
+    /**
+    * New account email.
+    */
+    newEmail?: string
+
+    /**
+     * New account username.
+     */
+    newUsername?: string
+
+    /**
+     * New account password.
+     */
+    newPassword?: string
 
 
     ////////////////////////////////////////

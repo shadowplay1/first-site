@@ -1,48 +1,53 @@
 function checkLoginData() {
     const email = document.getElementById('login').value
     const password = document.getElementById('password').value
-    const rememberMe = document.getElementById('rememberMe').checked
+    const rememberMe = document.getElementById('rememberMe')?.checked || true
+
+    const incorrectEmail = document.getElementById('incorrectEmail')
+    const incorrectPassword = document.getElementById('incorrectPassword')
 
     NProgress.start()
 
     if (!email) {
-        document.getElementById('incorrectEmail').textContent = 'Укажите почту.'
+        incorrectEmail.textContent = 'Укажите почту.'
         NProgress.done()
         return
-    } else document.getElementById('incorrectEmail').textContent = ''
+    } else incorrectEmail.textContent = ''
 
     if (!isEmail(email)) {
-        document.getElementById('incorrectEmail').textContent = 'Укажите действительную почту.'
+        incorrectEmail.textContent = 'Укажите действительную почту.'
         NProgress.done()
         return
-    } else document.getElementById('incorrectEmail').textContent = ''
+    } else incorrectEmail.textContent = ''
 
     if (!password) {
-        document.getElementById('incorrectPassword').textContent = 'Укажите пароль.'
+        incorrectPassword.textContent = 'Укажите пароль.'
         NProgress.done()
         return
-    } else document.getElementById('incorrectPassword').textContent = ''
+    } else incorrectPassword.textContent = ''
 
     if (password.length < 3) {
-        document.getElementById('incorrectPassword').textContent = 'Длина пароля должна быть больше 3 символов.'
+        incorrectPassword.textContent = 'Длина пароля должна быть больше 3 символов.'
         NProgress.done()
         return
-    } else document.getElementById('incorrectPassword').textContent = ''
+    } else incorrectPassword.textContent = ''
 
     if (password.length > 15) {
-        document.getElementById('incorrectPassword').textContent = 'Длина пароля должна быть меньше 15 символов.'
+        incorrectPassword.textContent = 'Длина пароля должна быть меньше 15 символов.'
         NProgress.done()
         return
-    } else document.getElementById('incorrectPassword').textContent = ''
+    } else incorrectPassword.textContent = ''
 
     fetch(`/api/login/${email}/${password}/${rememberMe}`, {
         method: 'POST'
     }).then(x => x.json()).then(x => {
         if (!x.status) {
-            document.getElementById('incorrectPassword').textContent = 'Неправильный логин или пароль.'
+            incorrectPassword.textContent = 'Неправильный логин или пароль.'
             NProgress.done()
             return
         }
+
+        document.cookie = `email=${email}; path=/`
 
         localStorage.accountData = JSON.stringify({
             id: x.account.id,
@@ -52,9 +57,13 @@ function checkLoginData() {
             remember: rememberMe
         })
 
-        window.location = '/admin/logs'
+        window.location = x.account.admin ? '/admin/logs' : '/'
     }).catch(err => {
         console.warn(`Failed to send the login data to API: ${err}`)
-        document.getElementById('incorrectPassword').textContent = 'Сервер авторизации недоступен.'
+        incorrectPassword.textContent = 'Сервер авторизации недоступен.'
     })
+}
+
+document.onkeydown = function (x) {
+    if (x.key == 'Enter') return checkLoginData()
 }
